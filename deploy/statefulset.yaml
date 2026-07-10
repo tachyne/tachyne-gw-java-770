@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
         - name: gw
-          image: github.com/tachyne/tachyne-gw-java-770:latest
+          image: ghcr.io/tachyne/tachyne-gw-java-770:latest
           imagePullPolicy: Always
           env:
             - name: POD_NAME
