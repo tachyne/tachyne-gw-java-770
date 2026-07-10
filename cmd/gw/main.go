@@ -44,6 +44,7 @@ func main() {
 		Proto:        Protocol,
 		MinProto:     MinProto,
 		MaxProto:     MaxProto,
+		ViewCap:      envInt("TACHYNE_VIEW_CAP"), // honored render-distance ceiling; 0 = pipeline default (12)
 	}
 	if url := os.Getenv("TACHYNE_ACCESS_URL"); url != "" {
 		s.Access = access.New(url, os.Getenv("TACHYNE_ACCESS_TOKEN"), 30*time.Second)
@@ -65,6 +66,15 @@ func envOr(k, d string) string {
 		return v
 	}
 	return d
+}
+
+// envInt reads a non-negative integer env var; unset/invalid = 0 (use default).
+func envInt(k string) int32 {
+	n, err := strconv.Atoi(os.Getenv(k))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return int32(n)
 }
 
 func ordinal(pod string) int {
