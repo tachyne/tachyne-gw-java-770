@@ -4,6 +4,15 @@
 > Microsoft, or Minecraft's developer/publisher in any way. See the
 > Disclaimer at the bottom.
 
+## Project status
+
+**Work in progress.** tachyne is young and moving fast: a full survival game
+runs today, but expect rough edges, missing vanilla features, and breaking
+changes between updates. **Bug reports are genuinely useful** — please open a
+GitHub Issue with your client version/edition and what you saw. Contributions
+are welcome too: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+
 
 Gateway for Java protocols **770–772 (Minecraft 1.21.5–1.21.8)**: terminates
 real clients, authorizes every login via **tachyne-access** (fail closed,
