@@ -27,9 +27,10 @@ Gateway for Java protocols **770–772 (Minecraft 1.21.5–1.21.8)**: terminates
 real clients, authorizes every login via **tachyne-access** (fail closed,
 30 s verdict cache), attaches the session to a **tachyne-world** pod over the
 domain attach protocol, and renders the typed event stream into 770 wire
-format via the shared **`tachyne-common/render770`** package. 770→772 are
-pure packet-ID remaps, so all three protocols are served from the one
-canonical composition.
+format via the shared **`tachyne-common/render770`** package. 770→772 differ
+by little more than packet-ID remaps (plus a known-packs version rewrite in
+the config phase), so all three protocols are served from the one canonical
+composition, translated per connection by `protocol.TranslatorFor`.
 
 Clients do not reach this pod directly: **tachyne-ingress** owns the public
 port (`<server-ip>:25565`), reads the handshake, and splices matching
@@ -39,7 +40,7 @@ v1 so access checks and logs see the real client IP.
 ## Session pipeline
 
 ```
-client ⇄ [status | login(access check) → configuration → play]   this repo
+client ⇄ [status | login(access check) → configuration → play]   tachyne-common/gwsession
               play ⇄ attach session ⇄ tachyne-world :25500 (ATTACH_TOKEN)
 ```
 
@@ -48,7 +49,7 @@ client ⇄ [status | login(access check) → configuration → play]   this repo
   `tachyne-common/protocol` — full registries (enchantments included),
   `UpdateTagsPacket`, brand, feature flags. Identical bytes to what the old
   monolith sent a 770 client, guarded by a strict re-parser test in common.
-- **Play, world→client** (`internal/gw/session.go`): every attach frame has a
+- **Play, world→client** (`tachyne-common/gwsession`): every attach frame has a
   typed case rendering through `render770` — entities via the per-viewer
   `EntityView` (relative i16 deltas vs absolute resyncs, `NoSync`), chat/boss
   bars/time, survival state, items/windows, sounds/particles/world FX, game
@@ -56,7 +57,8 @@ client ⇄ [status | login(access check) → configuration → play]   this repo
   Chunks decode from the attach binary body into 770 chunk-data packets
   (block entities included via `ChunkHeader.BEs`).
 - **Play, client→world**: movement → `Move` frames + `Want` on center-chunk
-  change (view radius 6); dig/place parsed and forwarded as typed frames with
+  change (the client's own view distance, capped at 12 by `TACHYNE_VIEW_CAP`);
+  dig/place parsed and forwarded as typed frames with
   the prediction sequence **acked locally**; chat/commands forwarded; every
   other gameplay packet lifted via `render770.SID*`/`Parse*` into the typed
   serverbound actions 0x34–0x3f (use-item/entity, window clicks, crafting,
@@ -80,23 +82,27 @@ against a local engine), `TACHYNE_ATTACH_TOKEN` (secret
 
 ## Deploy
 
-CI builds + pushes the gateway image
-on every push to main (dind quirk + `REGISTRY_TOKEN` notes in the gw-776
-repo's CLAUDE.md); then `kubectl rollout restart` on the StatefulSet. Deploy the world pod first when a
-tachyne-common protocol change is involved.
+GitHub Actions runs gofmt/vet/test on every push and PR, then builds and
+pushes `ghcr.io/tachyne/tachyne-gw-java-770:{latest,<short-sha>}`; then
+`kubectl rollout restart` on the StatefulSet. Deploy the world pod first when
+a tachyne-common protocol change is involved.
 
 ## Known debt
 
-Recipe book not sent (needs a gateway-side builder over a future attach
-event); `joinPacket` hardcodes survival at login (Welcome lacks gamemode —
-mode-change events correct it after join); sibling gw-776 duplicates the
-session code with a translation layer — extraction into common is future
-work if a third gateway appears.
+Protocols 773–775 are unrouted, so 1.21.9, 1.21.10 and 1.21.11 clients are
+turned away at the ingress — including the engine's own canonical content
+version. Serving them needs translation steps in tachyne-common plus an
+ingress route.
+
+(Three long-standing debts here are now paid: the recipe book IS sent, the
+join packet carries the real gamemode from `Welcome`, and the session
+pipeline was extracted into `tachyne-common/gwsession` — gw-776 shares it
+rather than copying it.)
 
 ## Deployment
 
 `Dockerfile` builds a static Go binary into a minimal image. `deploy/` holds
-working Kubernetes manifests (the ones this project actually runs) — treat
+sanitized Kubernetes manifests shaped like the ones this project runs — treat
 them as examples: substitute your own image registry, hostnames, namespaces
 and secrets before applying them to your cluster.
 
