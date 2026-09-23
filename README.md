@@ -1,5 +1,11 @@
 # tachyne-gw-java-770
 
+> **Retired (2026-09-23).** tachyne's engine moved its content to Minecraft
+> 26.3, and Java 1.21.5–1.21.8 are no longer served; this gateway is kept for
+> reference and is not built against the current engine. Java clients connect
+> through [tachyne-gw-java-776](https://github.com/tachyne/tachyne-gw-java-776)
+> (26.2–26.3).
+
 > tachyne is an unofficial fan project, not affiliated with Mojang,
 > Microsoft, or Minecraft's developer/publisher in any way. See the
 > Disclaimer at the bottom.
